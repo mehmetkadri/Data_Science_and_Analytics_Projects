@@ -1,0 +1,171 @@
+---
+title: "Studying on Iris Dataset"
+author: "Mehmet Kadri Gofralılar"
+date: "11/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+
+```
+
+## Preparations 
+
+First, we import libraries that we need to use. Then, we should assign our dataset **Iris** to a variable in order to use it.
+
+```{r imports, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(factoextra)
+library(cluster)
+library(stats)
+
+data <- iris
+str(data)
+```
+
+We can see that we have 4 numeric columns and 1 factorized column.
+
+## Plot
+
+Now, we will plot `“sepal width”` vs `“sepal length”`, coloring the points according to their `species`.
+
+```{r plot}
+width_length <-ggplot(data) +
+  geom_point(mapping=aes(x = Sepal.Length, y= Sepal.Width, colour = Species))+
+  labs(
+    x = "Sepal Length",
+    y = "Sepal Width",
+    title = "Sepal Width vs Sepal Length colored by Species")
+
+width_length
+```
+
+
+## Apply PCA
+
+Now, we will apply **principle component analysis(PCA)** to see potential number of `clusters`.
+
+
+```{r pca}
+pca <- prcomp(data[1:4] ,center = TRUE, scale = TRUE)
+summary(pca)
+```
+
+We can see that it's possible to represent the whole dataset by using 4 components at total. But it's easy to say that first 2 or 3 components can represent a big percentage of our dataset. Last component is the least important one and covers too less of our dataset. Therefore, probably 3 clusters will be okay for us to use.
+
+
+## Plot PCA
+
+Next, we will use `fviz_pca_ind` function to plot **2-D PCA plot**.
+
+```{r pca_plot}
+pca_plot <- fviz_pca_ind(pca, geom.ind = "point", pointshape = 21, 
+             pointsize = 2, 
+             fill.ind = data$Species, 
+             col.ind = "black", 
+             palette = "jco", 
+             addEllipses = TRUE,
+             label = "var",
+             col.var = "black",
+             repel = TRUE,
+             legend.title = "Species") +
+  ggtitle("2D PCA-plot for Iris Data") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+pca_plot
+
+```
+
+We can see that there are a couple of outlier points. **Setosa**s are quite seperated from others, but **Versicolor**s and **Virginica**s have a big intersection area.
+
+## Apply kmeans Clustring
+
+Now, we will apply **kmeans clustering**, which groups our data in a number of groups given by us.
+
+```{r kmeans}
+set.seed (102)
+clusters <- kmeans(data[1:4], 3)
+```
+
+
+## Compare kmeans Clustring and True Values
+
+Lets compare our predictions aquired by applying **kmeans clustering** with our true values.
+
+```{r kmeans_comparison}
+
+kmeans_prediction_of_species <- clusters$cluster
+
+kmeans_prediction_of_species <-
+replace(kmeans_prediction_of_species, kmeans_prediction_of_species==1,"virginica")
+
+kmeans_prediction_of_species <-
+replace(kmeans_prediction_of_species, kmeans_prediction_of_species==2,"setosa")
+
+kmeans_prediction_of_species <-
+replace(kmeans_prediction_of_species, kmeans_prediction_of_species==3,"versicolor")
+
+true_species <- data$Species
+
+comparison1 <- data.frame(as.factor(kmeans_prediction_of_species),true_species)
+
+head(comparison1,7)
+tail(comparison1,7)
+
+mean(kmeans_prediction_of_species == true_species)
+
+```
+
+It's possible to say that getting **89%** of the predictions correct is not a bad rate in this much of a small amount of data.
+
+
+## Apply Agglomerative Hierarchical Clustering
+
+Now, we will apply **Agglomerative Hierarchical Clustering**, which separates our data until reaching it's end in a few steps in a tree-like structure.
+
+```{r hierarchical}
+
+distance <- dist(data, method = "euclidean")
+
+hierarchical_clustering <- hclust(distance, method = "average" )
+
+```
+
+
+
+## Plot Dendogram
+
+Lets plot the `dendrogram`.
+
+```{r dendogram}
+plot(hierarchical_clustering, cex = 0.6, hang = -1)
+```
+
+
+## Compare Agglomerative Hierarchical and True Values
+Finally, lets cut the dendogram from height 3 and compare our predictions aquired by applying **Agglomerative Hierarchical Clustering** with our true values.
+```{r hierarchical_comparison}
+hierarchically_clustered_data_predictions <- cutree(hierarchical_clustering, k = 3)
+hierarchically_clustered_data_predictions
+
+hierarchically_clustered_data_predictions <-
+replace(hierarchically_clustered_data_predictions, hierarchically_clustered_data_predictions==1,"setosa")
+
+hierarchically_clustered_data_predictions <-
+replace(hierarchically_clustered_data_predictions, hierarchically_clustered_data_predictions==2,"versicolor")
+
+hierarchically_clustered_data_predictions <-
+replace(hierarchically_clustered_data_predictions, hierarchically_clustered_data_predictions==3,"virginica")
+
+comparison2 <- data.frame(as.factor(hierarchically_clustered_data_predictions),true_species)
+
+head(comparison2,7)
+tail(comparison2,7)
+
+mean(hierarchically_clustered_data_predictions == true_species)
+```
+
+Since almost **91%** of the predictions are correct, we can say that Hierarchical Clustering might be a better way to make predictions.
+

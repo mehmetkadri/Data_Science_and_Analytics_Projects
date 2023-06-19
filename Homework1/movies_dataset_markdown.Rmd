@@ -1,0 +1,137 @@
+---
+title: "Movies Dataset"
+author: "Mehmet Kadri Gofralılar"
+date: "10/15/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Explaining the Dataset
+
+This data was downloaded by me from <https://www.kaggle.com/ruchi798/movies-on-netflix-prime-video-hulu-and-disney>.
+
+This dataset is an amalgamation of:
+
+-data that was scraped, which comprised a comprehensive list of **movies** available on various **streaming platforms**
+
+-**IMDb** dataset
+
+At first, we need to read the data.
+
+
+```{r load_data}
+library(knitr)
+movies <- read.csv("data/MoviesOnStreamingPlatforms_updated.csv")
+kable(head(movies),format="markdown")
+
+```
+
+
+
+## Cleaning the Data
+
+Now, we have to tidy the data a little bit.
+
+
+```{r data_preparation}
+movies$Platform="NotDetermined"
+rowCount <- nrow(movies)
+for (platformColumn in 8:11) {
+     for (i in 1:rowCount) {
+         if (movies[i,platformColumn]==1) {
+             movies[i,18]=colnames(movies[platformColumn])
+         }
+     }
+ }
+
+movies <- subset( movies, select = -Netflix )
+movies <- subset( movies, select = -Hulu )
+movies <- subset( movies, select = -Prime_Video )
+movies <- subset( movies, select = -Disney )
+movies <- subset( movies, select = -Index )
+movies <- subset( movies, select = -Type )     
+
+movie_df <-as_tibble(select(movies, Title, Year, Age, IMDb, Rotten.Tomatoes, Platform, Genres, Country, Language, Runtime))
+
+movie_df <- filter(movie_df, (IMDb!=''))
+
+movie_df <- movie_df %>% 
+separate(IMDb, into = c("IMDb", "imdb_will_be_deleted"), sep = "/" , convert = TRUE)
+
+movie_df <- filter(movie_df, (Rotten.Tomatoes!=''))
+
+movie_df <- movie_df %>% 
+separate(Rotten.Tomatoes, into = c("Rotten.Tomatoes", "Rotten.Tomatoes_will_be_deleted") , sep = "/" , convert = TRUE)
+movie_df <- subset( movie_df, select = - imdb_will_be_deleted )
+movie_df <- subset( movie_df, select = - Rotten.Tomatoes_will_be_deleted )
+
+movie_df$Platform <- as.factor(movie_df$Platform)
+
+head(movie_df)
+```
+
+
+We've converted our dataframe to tibble, because tibbles have a refined print method that shows only the first 10 rows, and all the columns that fit on screen.
+
+Now, lets see age restriction of movies:
+
+
+```{r movieAge}
+ggplot(filter(movie_df, Age!="")) +
+     geom_bar(mapping=aes(x = Age, fill= Platform),position = "dodge")+
+     labs(
+         x = "Age Restrictions of Movies",
+         y = "Movie Counts",
+         title = "Age Restrictions Of Movies Made by Different Platforms")
+
+```
+
+
+By looking at this graph, we can say that Prime Video and Netflix have been providing 18+ movies much more than Disney and Hulu. Also Disney has been providing movies for audience of all ages mostly. Therefore, if a company were to decide on making a deal with a streaming service provider, they could decide based on the movie's targeted age.
+
+
+
+Also if we look into the ratings of movies on IMDb and RottenTomatoes provided, we can see if the streaming service providers matter or not for the popularity of the movie.
+
+
+```{r plot2}
+
+ggplot(movie_df) +
+    geom_point(mapping=aes(x = IMDb, y = Rotten.Tomatoes, color= Platform))+
+     labs(
+         x = "IMDb Ratings",
+         y = "Rotten Tomatoes Ratings",
+         title = "Ratings of Movies on Different Sites Made by Different Platforms")
+
+
+```
+
+
+
+Since the graph is too crowded, lets zoom in on the year 2021:
+
+```{r plot3}
+
+ggplot(filter(movie_df, Year==2021)) +
+    geom_point(mapping=aes(x = IMDb, y = Rotten.Tomatoes, color= Platform)) +
+     labs(
+         x = "IMDb Ratings",
+         y = "Rotten Tomatoes Ratings",
+         title = "Ratings of Movies on Different Sites Made by Different Platforms in 2021")
+
+
+```
+
+When we look at the year 2021, Netflix movies has been rated higher than most of the other platforms and Prime Videos movies are usually at the bottom of the rating. Also Disney movies are rated neutral and higher. 
+
+
+
+## Conclusion
+
+It's safe to say that Netflix and Prime Video has been providing much more movies than other platforms. Therefore subscribing to them could make sense. Movies streamed on Netflix also have higher rates and usually for 18+. That means for adult users, Netflix might be the best platform out of these options. But for all users, mostly children, Disney is probably the best choice. Almost all of the movies are appropriate for all users and they're safe to chose, since there's almost no movie that's rated less than 5 points on IMDb.
+
